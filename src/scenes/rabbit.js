@@ -63,14 +63,13 @@ class MainScene extends Phaser.Scene {
 
     scheduleNextRound() {
         if (this.roundsCount < 10) {
-            this.time.delayedCall(1000, this.spawnEnemies, [], this);
-            this.time.delayedCall(1500, this.spawnMoreEnemies, [], this);
+            this.time.delayedCall(2000, this.spawnEnemies, [], this);
+            this.time.delayedCall(3000, this.spawnMoreEnemies, [], this);
             // Schedule the next round call after a delay to ensure sequential rounds.
             this.time.delayedCall(3000, this.scheduleNextRound, [], this);
             this.roundsCount++;
         }
     }
-    
 
     spawnEnemies() {
         const numEnemies = Phaser.Math.Between(1, 3);
@@ -89,7 +88,7 @@ class MainScene extends Phaser.Scene {
     spawnMoreEnemies() {
         const numEnemies2 = Phaser.Math.Between(1, 2);
         for (let i = 0; i < numEnemies2; i++) {
-            const x = 1500 + i * 100;
+            const x = 3000 + i * 100;
             const y = 520;
             const enemy2 = this.enemies2.create(x, y, 'enemy2');
             enemy2.health = 3;
@@ -97,9 +96,9 @@ class MainScene extends Phaser.Scene {
     }
 
     handlePlayerEnemyCollision(player, enemy) {
-        
         player.health -= 1;
         enemy.health -= 1;
+        player.setVelocity(0);
         if (enemy.health <= 0) {
             enemy.destroy();
         }
