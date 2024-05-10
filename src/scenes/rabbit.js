@@ -17,22 +17,12 @@ class MainScene extends Phaser.Scene {
         this.player.health = 5;
         this.player.maxHealth = 5;
 
-        this.healthBars = [];
-        for (let i = 0; i < this.player.maxHealth; i++) {
-            let x = 10 + i * (35 + 10);
-            let healthRect = this.add.graphics({ fillStyle: { color: 0xff0000 } });
-            healthRect.fillRect(x, 20, 35, 20);
-            this.healthBars.push(healthRect);
-        }
+        this.healthBars = this.createHealthBars();
 
         this.enemies = this.physics.add.group();
         this.enemies2 = this.physics.add.group();
         this.carrots = this.physics.add.group();
-
-        // Position boss off-screen initially
-        this.boss = this.physics.add.sprite(this.game.config.width + 100, 450, 'boss');
-        this.boss.setActive(false).setVisible(false);
-        this.boss.health = 15;
+        this.boss = this.physics.add.group();
 
         this.cursors = this.input.keyboard.createCursorKeys();
         this.spaceBar = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
@@ -41,30 +31,61 @@ class MainScene extends Phaser.Scene {
         this.physics.add.collider(this.player, this.enemies2, this.handlePlayerEnemyCollision, null, this);
         this.physics.add.collider(this.carrots, this.enemies, this.handleCarrotEnemyCollision, null, this);
         this.physics.add.collider(this.carrots, this.enemies2, this.handleCarrotEnemyCollision, null, this);
-        this.physics.add.collider(this.carrots, this.boss, this.handleCarrotEnemyCollision, null, this);
+        
+        this.physics.add.collider(this.carrots, this.boss, this.handleCarrotBossCollision, null, this);
 
         this.roundsCount = 0;
         this.scheduleNextRound();
     }
 
+    createHealthBars() {
+        const bars = [];
+        for (let i = 0; i < this.player.maxHealth; i++) {
+            let x = 10 + i * (35 + 10);
+            let healthRect = this.add.graphics({ fillStyle: { color: 0xff0000 } });
+            healthRect.fillRect(x, 20, 35, 20);
+            bars.push(healthRect);
+        }
+        return bars;
+    }
+
     update() {
         if (Phaser.Input.Keyboard.JustDown(this.spaceBar)) {
-            const carrot = this.carrots.create(this.player.x + 20, this.player.y - 20, 'carrot');
-            carrot.setVelocityX(1000);
+            this.shootCarrot();
         }
 
+        this.moveEnemies();
+        this.moveBoss();
+
+        if (this.player.health <= 0) {
+            this.endGame(false);
+        }
+    }
+
+    shootCarrot() {
+        const carrot = this.carrots.create(this.player.x + 20, this.player.y - 20, 'carrot');
+        carrot.setVelocityX(1000);
+    }
+
+    moveEnemies() {
         this.enemies.children.iterate(enemy => {
             this.physics.moveToObject(enemy, this.player, 300);
         });
-
         this.enemies2.children.iterate(enemy => {
             this.physics.moveToObject(enemy, this.player, 300);
         });
+    }
 
-        if (this.player.health <= 0) {
-            this.physics.pause();
-            this.add.text(450, 300, 'Game Over', { fontSize: '40px', fill: '#fff' }).setOrigin(0.5);
-        }
+    moveBoss() {
+        this.boss.children.iterate(boss => {
+            this.physics.moveToObject(boss, this.player, 150);
+        });
+    }
+
+    endGame(win) {
+        this.physics.pause();
+        const message = win ? 'You Win!' : 'Game Over';
+        this.add.text(this.game.config.width / 2, this.game.config.height / 2, message, { fontSize: '40px', fill: '#fff' }).setOrigin(0.5);
     }
 
     scheduleNextRound() {
@@ -75,20 +96,6 @@ class MainScene extends Phaser.Scene {
             this.roundsCount++;
         } else if (this.roundsCount === 1) {
             this.time.delayedCall(1000, this.spawnBoss, [], this);
-        }
-    }
-
-    allEnemiesDefeated() {
-        return this.enemies.countActive(true) === 0 && this.enemies2.countActive(true) === 0;
-    }
-
-    spawnBoss() {
-        // Only spawn the boss if all enemies are defeated and it's not already active
-        if (!this.boss.active && this.allEnemiesDefeated()) {
-            this.boss.setActive(true).setVisible(true);
-            this.boss.setPosition(this.game.config.width - 100, 450); // spawn off-screen to the right
-            this.boss.setVelocityX(-200);  // Move the boss into the visible area
-            this.boss.setScale(2);
         }
     }
 
@@ -112,6 +119,21 @@ class MainScene extends Phaser.Scene {
         }
     }
 
+    spawnBoss() {
+        if (this.boss.countActive(true) === 0 && this.allEnemiesDefeated()) {
+            const x = this.game.config.width - 100;
+            const y = 450;
+            const boss = this.boss.create(x, y, 'boss');
+            boss.health = 15;
+            boss.setScale(2);
+            boss.setVelocityX(-200); // Enter the screen slowly
+        }
+    }
+
+    allEnemiesDefeated() {
+        return this.enemies.countActive(true) === 0 && this.enemies2.countActive(true) === 0;
+    }
+
     handlePlayerEnemyCollision(player, enemy) {
         player.health -= 1;
         enemy.health -= 1;
@@ -119,10 +141,11 @@ class MainScene extends Phaser.Scene {
         if (enemy.health <= 0) {
             enemy.destroy();
         }
-        this.updateHealthBar();
-        if (player.health <= 0) {
-            player.destroy();
+        if(enemy == boss){
+            player.destroy(); 
+            player.health = 0; 
         }
+        this.updateHealthBar();
     }
 
     handleCarrotEnemyCollision(carrot, enemy) {
@@ -130,6 +153,15 @@ class MainScene extends Phaser.Scene {
         enemy.health -= 1;
         if (enemy.health <= 0) {
             enemy.destroy();
+        }
+    }
+
+    handleCarrotBossCollision(carrot, boss) {
+        carrot.destroy();
+        boss.health -= 1;
+        if (boss.health <= 0) {
+            boss.destroy();
+            this.endGame(true);
         }
     }
 
