@@ -8,6 +8,7 @@ class MainScene extends Phaser.Scene {
         this.load.image('player', 'bunny2_walk1.png');
         this.load.image('enemy', 'spikeMan_stand.png');
         this.load.image('enemy2', 'flyMan_still_fly.png');
+        this.load.image('boss', 'sun1.png');
         this.load.image('carrot', 'carrot.png');
     }
 
@@ -26,8 +27,12 @@ class MainScene extends Phaser.Scene {
 
         this.enemies = this.physics.add.group();
         this.enemies2 = this.physics.add.group();
-
         this.carrots = this.physics.add.group();
+
+        // Position boss off-screen initially
+        this.boss = this.physics.add.sprite(this.game.config.width + 100, 450, 'boss');
+        this.boss.setActive(false).setVisible(false);
+        this.boss.health = 15;
 
         this.cursors = this.input.keyboard.createCursorKeys();
         this.spaceBar = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
@@ -36,6 +41,7 @@ class MainScene extends Phaser.Scene {
         this.physics.add.collider(this.player, this.enemies2, this.handlePlayerEnemyCollision, null, this);
         this.physics.add.collider(this.carrots, this.enemies, this.handleCarrotEnemyCollision, null, this);
         this.physics.add.collider(this.carrots, this.enemies2, this.handleCarrotEnemyCollision, null, this);
+        this.physics.add.collider(this.carrots, this.boss, this.handleCarrotEnemyCollision, null, this);
 
         this.roundsCount = 0;
         this.scheduleNextRound();
@@ -48,11 +54,11 @@ class MainScene extends Phaser.Scene {
         }
 
         this.enemies.children.iterate(enemy => {
-            this.physics.moveToObject(enemy, this.player, 200);
+            this.physics.moveToObject(enemy, this.player, 300);
         });
 
         this.enemies2.children.iterate(enemy => {
-            this.physics.moveToObject(enemy, this.player, 200);
+            this.physics.moveToObject(enemy, this.player, 300);
         });
 
         if (this.player.health <= 0) {
@@ -62,33 +68,44 @@ class MainScene extends Phaser.Scene {
     }
 
     scheduleNextRound() {
-        if (this.roundsCount < 10) {
-            this.time.delayedCall(2000, this.spawnEnemies, [], this);
-            this.time.delayedCall(3000, this.spawnMoreEnemies, [], this);
-            // Schedule the next round call after a delay to ensure sequential rounds.
+        if (this.roundsCount < 1) {
+            this.time.delayedCall(1000, this.spawnEnemies, [], this);
+            this.time.delayedCall(2000, this.spawnMoreEnemies, [], this);
             this.time.delayedCall(3000, this.scheduleNextRound, [], this);
             this.roundsCount++;
+        } else if (this.roundsCount === 1) {
+            this.time.delayedCall(1000, this.spawnBoss, [], this);
+        }
+    }
+
+    allEnemiesDefeated() {
+        return this.enemies.countActive(true) === 0 && this.enemies2.countActive(true) === 0;
+    }
+
+    spawnBoss() {
+        // Only spawn the boss if all enemies are defeated and it's not already active
+        if (!this.boss.active && this.allEnemiesDefeated()) {
+            this.boss.setActive(true).setVisible(true);
+            this.boss.setPosition(this.game.config.width - 100, 450); // spawn off-screen to the right
+            this.boss.setVelocityX(-200);  // Move the boss into the visible area
+            this.boss.setScale(2);
         }
     }
 
     spawnEnemies() {
         const numEnemies = Phaser.Math.Between(1, 3);
-        if (numEnemies > 0) { // Only spawn enemy2 if no enemy is present
-            for (let i = 0; i < numEnemies; i++) {
-                const x = 1000 + i * 100;
-                const y = 550;
-                const enemy = this.enemies.create(x, y, 'enemy');
-                enemy.health = 1;
-            }
-        } else {
-            this.spawnMoreEnemies();
+        for (let i = 0; i < numEnemies; i++) {
+            const x = this.game.config.width - i * 100;  // spawn off-screen to the right
+            const y = 550;
+            const enemy = this.enemies.create(x, y, 'enemy');
+            enemy.health = 1;
         }
     }
 
     spawnMoreEnemies() {
         const numEnemies2 = Phaser.Math.Between(1, 2);
         for (let i = 0; i < numEnemies2; i++) {
-            const x = 3000 + i * 100;
+            const x = this.game.config.width - i * 100;  // spawn off-screen to the right
             const y = 520;
             const enemy2 = this.enemies2.create(x, y, 'enemy2');
             enemy2.health = 3;
