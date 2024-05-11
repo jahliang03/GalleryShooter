@@ -20,5 +20,4 @@ let config = {
 window.onload = function() {
     const game = new Phaser.Game(config);
     game.scene.start('MainScene');
-    //game.scene.start('enemyScene'); // Ensure it starts and runs in parallel
 };

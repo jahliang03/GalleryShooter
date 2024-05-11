@@ -10,9 +10,14 @@ class MainScene extends Phaser.Scene {
         this.load.image('enemy2', 'flyMan_still_fly.png');
         this.load.image('boss', 'sun1.png');
         this.load.image('carrot', 'carrot.png');
+        this.load.audio('shoot', 'footstep_carpet_001.ogg');
     }
 
     create() {
+        // create ground
+        this.floor = this.add.rectangle(0, this.game.config.height - 20, this.game.config.width * 2, 40, 0x50C878);
+        this.physics.add.existing(this.floor, true);
+        
         this.player = this.physics.add.sprite(100, 530, 'player');
         this.player.health = 5;
         this.player.maxHealth = 5;
@@ -23,9 +28,15 @@ class MainScene extends Phaser.Scene {
             fill: '#ffffff'
         }).setOrigin(0.5, 0.5);
 
+        // enemy mobs
         this.enemies = this.physics.add.group();
         this.enemies2 = this.physics.add.group();
+
+        // create carrots for shooting
         this.carrots = this.physics.add.group();
+        this.shootSound = this.sound.add('shoot', { volume: 0.5 });
+
+        //create final boss
         this.boss = this.physics.add.group();
 
         this.cursors = this.input.keyboard.createCursorKeys();
@@ -68,6 +79,7 @@ class MainScene extends Phaser.Scene {
     shootCarrot() {
         const carrot = this.carrots.create(this.player.x + 20, this.player.y - 20, 'carrot');
         carrot.setVelocityX(1000);
+        this.shootSound.play(); 
     }
 
     moveEnemies() {
