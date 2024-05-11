@@ -1,5 +1,7 @@
 **GalleryShooter**
+
 How to Play Game: 
+
 Player fights off mobs of enemies by shooting carrots by pressing down space key. 
 If player comes into contact with an enemy their health will lower depending on the number of shots it takes to kill the enemy. 
 After several rounds of mobs, the player will fight the final boss to win the game. The final boss must be defeated for the game to win. 
