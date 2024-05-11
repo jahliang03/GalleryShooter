@@ -4,6 +4,7 @@ class MainScene extends Phaser.Scene {
     }
 
     preload() {
+        //load all assets used
         this.load.setPath("./assets/");
         this.load.image('player', 'bunny2_walk1.png');
         this.load.image('enemy', 'spikeMan_stand.png');
@@ -14,14 +15,20 @@ class MainScene extends Phaser.Scene {
     }
 
     create() {
-        // create ground
+
+        // update instruction text
+        document.getElementById('description').innerHTML = '<h2>Bunny Shooter<br>space bar - shoot // red enemy - 1 shot<br>flying enemy - 3 shots // sun boss - 15 shots</h2>'
+        
+        // create ground     
         this.floor = this.add.rectangle(0, this.game.config.height - 20, this.game.config.width * 2, 40, 0x50C878);
         this.physics.add.existing(this.floor, true);
         
+        // initialize player sprite
         this.player = this.physics.add.sprite(100, 530, 'player');
         this.player.health = 5;
         this.player.maxHealth = 5;
 
+        //create health bar
         this.healthBars = this.createHealthBars();
         this.healthLabel = this.add.text(52, 20, 'Health:', {
             fontSize: '20px',
@@ -42,6 +49,7 @@ class MainScene extends Phaser.Scene {
         this.cursors = this.input.keyboard.createCursorKeys();
         this.spaceBar = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
 
+        // adding collision logic and physics
         this.physics.add.collider(this.player, this.enemies, this.handlePlayerEnemyCollision, null, this);
         this.physics.add.collider(this.player, this.enemies2, this.handlePlayerEnemyCollision, null, this);
         this.physics.add.collider(this.carrots, this.enemies, this.handleCarrotEnemyCollision, null, this);
@@ -50,17 +58,6 @@ class MainScene extends Phaser.Scene {
 
         this.roundsCount = 0;
         this.scheduleNextRound();
-    }
-
-    createHealthBars() {
-        const bars = [];
-        for (let i = 0; i < this.player.maxHealth; i++) {
-            let x = 10 + i * (35 + 10);
-            let healthRect = this.add.graphics({ fillStyle: { color: 0xB667FF } });
-            healthRect.fillRect(x, 35, 35, 30);
-            bars.push(healthRect);
-        }
-        return bars;
     }
 
     update() {
@@ -76,53 +73,48 @@ class MainScene extends Phaser.Scene {
         }
     }
 
+    // create and update health bar
+    createHealthBars() {
+        const bars = [];
+        for (let i = 0; i < this.player.maxHealth; i++) {
+            let x = 10 + i * (35 + 10);
+            let healthRect = this.add.graphics({ fillStyle: { color: 0xB667FF } });
+            healthRect.fillRect(x, 35, 35, 30);
+            bars.push(healthRect);
+        }
+        return bars;
+    }
+
+    updateHealthBar() {
+        this.healthBars.forEach((bar, index) => {
+            bar.setVisible(index < this.player.health);
+        });
+    }
+
+    // game conditions to end game
+    endGame(win) {
+        this.physics.pause();
+        const message = win ? 'You Win!' : 'Game Over';
+        const text = this.add.text(this.game.config.width / 2, this.game.config.height / 2, message, { fontSize: '40px', fill: '#fff' }).setOrigin(0.5);
+    
+        // restart button
+        const restartButton = this.add.text(this.game.config.width / 2, this.game.config.height / 2 + 60, 'Restart', { fontSize: '32px', fill: '#0f0' })
+            .setOrigin(0.5)
+            .setInteractive()
+            .on('pointerdown', () => this.scene.restart()); // Restart the scene on click
+    
+        // hover effect for button
+        restartButton.on('pointerover', () => restartButton.setStyle({ fill: '#ff0'}));
+        restartButton.on('pointerout', () => restartButton.setStyle({ fill: '#0f0'}));
+    }
+
     shootCarrot() {
         const carrot = this.carrots.create(this.player.x + 20, this.player.y - 20, 'carrot');
         carrot.setVelocityX(1000);
         this.shootSound.play(); 
     }
 
-    moveEnemies() {
-        this.enemies.children.iterate(enemy => {
-            this.physics.moveToObject(enemy, this.player, 300);
-        });
-        this.enemies2.children.iterate(enemy => {
-            this.physics.moveToObject(enemy, this.player, 300);
-        });
-    }
-
-    moveBoss() {
-        this.boss.children.iterate(boss => {
-            this.physics.moveToObject(boss, this.player, 150);
-        });
-    }
-
-    endGame(win) {
-        this.physics.pause();
-        const message = win ? 'You Win!' : 'Game Over';
-        const text = this.add.text(this.game.config.width / 2, this.game.config.height / 2, message, { fontSize: '40px', fill: '#fff' }).setOrigin(0.5);
-    
-        // Create a restart button
-        const restartButton = this.add.text(this.game.config.width / 2, this.game.config.height / 2 + 60, 'Restart', { fontSize: '32px', fill: '#0f0' })
-            .setOrigin(0.5)
-            .setInteractive()
-            .on('pointerdown', () => this.scene.restart()); // Restart the scene on click
-    
-        // Optionally, add a hover effect
-        restartButton.on('pointerover', () => restartButton.setStyle({ fill: '#ff0'}));
-        restartButton.on('pointerout', () => restartButton.setStyle({ fill: '#0f0'}));
-    }
-    
-    scheduleNextRound() {
-        if (this.roundsCount < 10) {
-            this.time.delayedCall(1000, this.spawnEnemies, [], this);
-            this.time.delayedCall(2000, this.spawnMoreEnemies, [], this);
-            this.time.delayedCall(3000, this.scheduleNextRound, [], this);
-            this.roundsCount++;
-        } else if (this.roundsCount === 10) {
-            this.time.delayedCall(1000, this.spawnBoss, [], this);
-        }
-    }
+    // enemy related functions 
 
     spawnEnemies() {
         const numEnemies = Phaser.Math.Between(1, 3);
@@ -143,7 +135,28 @@ class MainScene extends Phaser.Scene {
             enemy2.health = 3;
         }
     }
+    //functions to move enemies 
+    moveEnemies() {
+        this.enemies.children.iterate(enemy => {
+            this.physics.moveToObject(enemy, this.player, 300);
+        });
+        this.enemies2.children.iterate(enemy => {
+            this.physics.moveToObject(enemy, this.player, 300);
+        });
+    }
 
+    scheduleNextRound() {
+        if (this.roundsCount < 10) {
+            this.time.delayedCall(1000, this.spawnEnemies, [], this);
+            this.time.delayedCall(2000, this.spawnMoreEnemies, [], this);
+            this.time.delayedCall(3000, this.scheduleNextRound, [], this);
+            this.roundsCount++;
+        } else if (this.roundsCount === 10) {
+            this.time.delayedCall(1000, this.spawnBoss, [], this);
+        }
+    }
+
+    // boss related function 
     spawnBoss() {
         if (this.boss.countActive(true) === 0 && this.allEnemiesDefeated()) {
             const x = this.game.config.width - 100;
@@ -151,33 +164,40 @@ class MainScene extends Phaser.Scene {
             const boss = this.boss.create(x, y, 'boss');
             boss.health = 15;
             boss.setScale(2);
-            boss.setVelocityX(-200); // Enter the screen slowly
+            boss.setVelocityX(-200); // enter the screen slowly
         }
     }
-
+    //check for all defeated mobs before boss spawn
     allEnemiesDefeated() {
         return this.enemies.countActive(true) === 0 && this.enemies2.countActive(true) === 0;
     }
 
+    moveBoss() {
+        this.boss.children.iterate(boss => {
+            this.physics.moveToObject(boss, this.player, 150);
+        });
+    }
+
+    //collision functions and logic 
     handlePlayerEnemyCollision(player, enemy) {
-        player.health -= 1; // Decrease player health by 1 on any enemy collision
-        enemy.health -= 1; // Decrease enemy health by 1 on collision
-        player.setVelocity(0); // Stops the player's movement on collision
+        player.health -= 1; // decrease player health by 1 on any enemy collision
+        enemy.health -= 1; // decrease enemy health by 1 on collision
+        player.setVelocity(0); // stops the player's movement on collision
     
         if (enemy.health <= 0) {
-            enemy.destroy(); // Destroys enemy if its health is 0 or less
+            enemy.destroy(); // sestroys enemy if its health is 0 or less
         }
     
         // Check if the enemy is a boss
         if (this.boss.contains(enemy)) {
             if (this.boss.health <= 0) {
                 player.health = 0;
-                this.endGame(true); // End game as a win if boss is defeated
+                this.endGame(true); // end game as a win if boss is defeated
             }
         }
-        this.updateHealthBar(); // Update the visual health bar
+        this.updateHealthBar(); // update the visual health bar
         if (player.health <= 0) {
-            this.endGame(false); // End the game as a loss if player health is 0 or less
+            this.endGame(false); // end the game as a loss if player health is 0 or less
         }
     }
     
@@ -196,11 +216,5 @@ class MainScene extends Phaser.Scene {
             boss.destroy();
             this.endGame(true);
         }
-    }
-
-    updateHealthBar() {
-        this.healthBars.forEach((bar, index) => {
-            bar.setVisible(index < this.player.health);
-        });
     }
 }
