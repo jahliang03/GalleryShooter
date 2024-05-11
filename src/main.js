@@ -3,6 +3,7 @@
 // Game configuration
 let config = {
     type: Phaser.CANVAS,
+    backgroundColor: '#ADD8E6', 
     parent: 'phaser-game',
     width: 1000,
     height: 640,

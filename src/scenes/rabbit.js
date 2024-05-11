@@ -18,6 +18,10 @@ class MainScene extends Phaser.Scene {
         this.player.maxHealth = 5;
 
         this.healthBars = this.createHealthBars();
+        this.healthLabel = this.add.text(52, 20, 'Health:', {
+            fontSize: '20px',
+            fill: '#ffffff'
+        }).setOrigin(0.5, 0.5);
 
         this.enemies = this.physics.add.group();
         this.enemies2 = this.physics.add.group();
@@ -31,7 +35,6 @@ class MainScene extends Phaser.Scene {
         this.physics.add.collider(this.player, this.enemies2, this.handlePlayerEnemyCollision, null, this);
         this.physics.add.collider(this.carrots, this.enemies, this.handleCarrotEnemyCollision, null, this);
         this.physics.add.collider(this.carrots, this.enemies2, this.handleCarrotEnemyCollision, null, this);
-        
         this.physics.add.collider(this.carrots, this.boss, this.handleCarrotBossCollision, null, this);
 
         this.roundsCount = 0;
@@ -42,8 +45,8 @@ class MainScene extends Phaser.Scene {
         const bars = [];
         for (let i = 0; i < this.player.maxHealth; i++) {
             let x = 10 + i * (35 + 10);
-            let healthRect = this.add.graphics({ fillStyle: { color: 0xff0000 } });
-            healthRect.fillRect(x, 20, 35, 20);
+            let healthRect = this.add.graphics({ fillStyle: { color: 0xB667FF } });
+            healthRect.fillRect(x, 35, 35, 30);
             bars.push(healthRect);
         }
         return bars;
@@ -56,7 +59,7 @@ class MainScene extends Phaser.Scene {
 
         this.moveEnemies();
         this.moveBoss();
-
+        
         if (this.player.health <= 0) {
             this.endGame(false);
         }
@@ -85,16 +88,26 @@ class MainScene extends Phaser.Scene {
     endGame(win) {
         this.physics.pause();
         const message = win ? 'You Win!' : 'Game Over';
-        this.add.text(this.game.config.width / 2, this.game.config.height / 2, message, { fontSize: '40px', fill: '#fff' }).setOrigin(0.5);
+        const text = this.add.text(this.game.config.width / 2, this.game.config.height / 2, message, { fontSize: '40px', fill: '#fff' }).setOrigin(0.5);
+    
+        // Create a restart button
+        const restartButton = this.add.text(this.game.config.width / 2, this.game.config.height / 2 + 60, 'Restart', { fontSize: '32px', fill: '#0f0' })
+            .setOrigin(0.5)
+            .setInteractive()
+            .on('pointerdown', () => this.scene.restart()); // Restart the scene on click
+    
+        // Optionally, add a hover effect
+        restartButton.on('pointerover', () => restartButton.setStyle({ fill: '#ff0'}));
+        restartButton.on('pointerout', () => restartButton.setStyle({ fill: '#0f0'}));
     }
-
+    
     scheduleNextRound() {
-        if (this.roundsCount < 1) {
+        if (this.roundsCount < 10) {
             this.time.delayedCall(1000, this.spawnEnemies, [], this);
             this.time.delayedCall(2000, this.spawnMoreEnemies, [], this);
             this.time.delayedCall(3000, this.scheduleNextRound, [], this);
             this.roundsCount++;
-        } else if (this.roundsCount === 1) {
+        } else if (this.roundsCount === 10) {
             this.time.delayedCall(1000, this.spawnBoss, [], this);
         }
     }
@@ -135,19 +148,27 @@ class MainScene extends Phaser.Scene {
     }
 
     handlePlayerEnemyCollision(player, enemy) {
-        player.health -= 1;
-        enemy.health -= 1;
-        player.setVelocity(0);
+        player.health -= 1; // Decrease player health by 1 on any enemy collision
+        enemy.health -= 1; // Decrease enemy health by 1 on collision
+        player.setVelocity(0); // Stops the player's movement on collision
+    
         if (enemy.health <= 0) {
-            enemy.destroy();
+            enemy.destroy(); // Destroys enemy if its health is 0 or less
         }
-        if(enemy == boss){
-            player.destroy(); 
-            player.health = 0; 
+    
+        // Check if the enemy is a boss
+        if (this.boss.contains(enemy)) {
+            if (this.boss.health <= 0) {
+                player.health = 0;
+                this.endGame(true); // End game as a win if boss is defeated
+            }
         }
-        this.updateHealthBar();
+        this.updateHealthBar(); // Update the visual health bar
+        if (player.health <= 0) {
+            this.endGame(false); // End the game as a loss if player health is 0 or less
+        }
     }
-
+    
     handleCarrotEnemyCollision(carrot, enemy) {
         carrot.destroy();
         enemy.health -= 1;
